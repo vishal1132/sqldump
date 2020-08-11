@@ -103,18 +103,18 @@ func main() {
 	}
 	s := strings.Split(b.String(), "\n")
 	files := s[:len(s)-1]
-	maketar("sql", files)
-	remove("sql", files)
+	maketar(files)
+	remove(files)
 }
 
-func remove(grep string, files []string) error {
+func remove(files []string) error {
 	for _, file := range files {
 		os.Remove(file)
 	}
 	return nil
 }
 
-func maketar(grep string, files []string) error {
+func maketar(files []string) error {
 	t := time.Now()
 	formatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 	formattedWithName := formatted + ".sql.gz"
