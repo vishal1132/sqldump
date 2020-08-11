@@ -74,7 +74,7 @@ func makeCompleteDBBackup() {
 func main() {
 	godotenv.Load()
 
-	numDBs, err := strconv.Atoi(getEnv("NumDestination", "1"))
+	numDBs, err := strconv.Atoi(getEnv("NumDBs", "1"))
 	if err != nil {
 		log.Fatal("unknown digit in number destination ", err)
 	}
