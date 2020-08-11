@@ -38,14 +38,14 @@ func dumpSpecificTables(i int) {
 	db := getEnv(dbenvKey, "cdrlog")
 	tableEnvKey := "Tables" + strconv.Itoa(i+1)
 	tables := getEnv(tableEnvKey, "")
-	formattedWithName := formatted + "_" + db
-	cmdDump := &exec.Cmd{
-		Path:   mysqldumppath,
-		Stdout: os.Stdout,
-		Stdin:  os.Stdin,
-		Stderr: os.Stderr,
-		Args:   []string{mysqldumppath, user, password, db, tables, "--result-file", formattedWithName + ".sql"},
-	}
+	formattedWithName := formatted + "_" + db + ".sql"
+	fmt.Println("tables ", tables, " formattedName ", formattedWithName)
+	args := []string{user, password}
+	arr := strings.Split(tables, ",")
+	args = append(args, db)
+	args = append(args, arr...)
+	args = append(args, "--result-file", formattedWithName)
+	cmdDump := exec.Command(mysqldumppath, args...)
 	log.Println(cmdDump.String())
 	if err := cmdDump.Run(); err != nil {
 		log.Println("error occurred ", err)
@@ -66,7 +66,6 @@ func makeCompleteDBBackup() {
 	args = append(args, arr...)
 	args = append(args, "--result-file", formattedWithName)
 	cmdDump := exec.Command(mysqldumppath, args...)
-	log.Println(cmdDump.String())
 	if err := cmdDump.Run(); err != nil {
 		log.Println("error occurred ", err)
 	}
@@ -80,7 +79,7 @@ func main() {
 		log.Fatal("unknown digit in number destination ", err)
 	}
 	for i := 0; i < numDBs; i++ {
-		// dumpSpecificTables(i)
+		dumpSpecificTables(i)
 	}
 	makeCompleteDBBackup()
 }
