@@ -1,7 +1,12 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -46,7 +51,6 @@ func dumpSpecificTables(i int) {
 	args = append(args, arr...)
 	args = append(args, "--result-file", formattedWithName)
 	cmdDump := exec.Command(mysqldumppath, args...)
-	log.Println(cmdDump.String())
 	if err := cmdDump.Run(); err != nil {
 		log.Println("error occurred ", err)
 	}
@@ -79,7 +83,89 @@ func main() {
 		log.Fatal("unknown digit in number destination ", err)
 	}
 	for i := 0; i < numDBs; i++ {
-		dumpSpecificTables(i)
+		// dumpSpecificTables(i)
 	}
-	makeCompleteDBBackup()
+	// makeCompleteDBBackup()
+	ls := exec.Command("ls")
+	grepPattern2 := "\\.sql"
+	grep := exec.Command("grep", grepPattern2)
+	grep.Stdin, err = ls.StdoutPipe()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var b bytes.Buffer
+	grep.Stdout = &b
+	err = grep.Start()
+	err = ls.Run()
+	err = grep.Wait()
+	if err != nil {
+		log.Println("unable to grep .sql files in the directory ", err)
+	}
+	s := strings.Split(b.String(), "\n")
+	files := s[:len(s)-1]
+	maketar("sql", files)
+	remove("sql", files)
+}
+
+func remove(grep string, files []string) error {
+	for _, file := range files {
+		os.Remove(file)
+	}
+	return nil
+}
+
+func maketar(grep string, files []string) error {
+	t := time.Now()
+	formatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	formattedWithName := formatted + ".sql.gz"
+	file, err := os.Create(formattedWithName)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not create tarball file '%s', got error '%s'", formattedWithName, err.Error()))
+	}
+	defer file.Close()
+
+	gzipWriter := gzip.NewWriter(file)
+	defer gzipWriter.Close()
+
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+	for _, filePath := range files {
+		err := addFileToTarWriter(filePath, tarWriter)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Could not add file '%s', to tarball, got error '%s'", filePath, err.Error()))
+		}
+	}
+	return nil
+}
+
+func addFileToTarWriter(filePath string, tarWriter *tar.Writer) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not open file '%s', got error '%s'", filePath, err.Error()))
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not get stat for file '%s', got error '%s'", filePath, err.Error()))
+	}
+
+	header := &tar.Header{
+		Name:    filePath,
+		Size:    stat.Size(),
+		Mode:    int64(stat.Mode()),
+		ModTime: stat.ModTime(),
+	}
+
+	err = tarWriter.WriteHeader(header)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not write header for file '%s', got error '%s'", filePath, err.Error()))
+	}
+
+	_, err = io.Copy(tarWriter, file)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not copy the file '%s' data to the tarball, got error '%s'", filePath, err.Error()))
+	}
+
+	return nil
 }
