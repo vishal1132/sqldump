@@ -83,9 +83,9 @@ func main() {
 		log.Fatal("unknown digit in number destination ", err)
 	}
 	for i := 0; i < numDBs; i++ {
-		// dumpSpecificTables(i)
+		dumpSpecificTables(i)
 	}
-	// makeCompleteDBBackup()
+	makeCompleteDBBackup()
 	ls := exec.Command("ls")
 	grepPattern2 := "\\.sql"
 	grep := exec.Command("grep", grepPattern2)
