@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -59,14 +60,12 @@ func makeCompleteDBBackup() {
 	log.Println(dbs)
 	t := time.Now()
 	formatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-	formattedWithName := formatted + "_completedbs"
-	cmdDump := &exec.Cmd{
-		Path:   mysqldumppath,
-		Stdout: os.Stdout,
-		Stdin:  os.Stdin,
-		Stderr: os.Stderr,
-		Args:   []string{mysqldumppath, user, password, "--databases", dbs, "--result-file", formattedWithName + ".sql"},
-	}
+	formattedWithName := formatted + "_databases" + ".sql"
+	args := []string{user, password, "--databases"}
+	arr := strings.Split(dbs, ",")
+	args = append(args, arr...)
+	args = append(args, "--result-file", formattedWithName)
+	cmdDump := exec.Command(mysqldumppath, args...)
 	log.Println(cmdDump.String())
 	if err := cmdDump.Run(); err != nil {
 		log.Println("error occurred ", err)
@@ -75,7 +74,7 @@ func makeCompleteDBBackup() {
 
 func main() {
 	godotenv.Load()
-	makeCompleteDBBackup()
+
 	numDBs, err := strconv.Atoi(getEnv("NumDestination", "1"))
 	if err != nil {
 		log.Fatal("unknown digit in number destination ", err)
@@ -83,4 +82,5 @@ func main() {
 	for i := 0; i < numDBs; i++ {
 		// dumpSpecificTables(i)
 	}
+	makeCompleteDBBackup()
 }
